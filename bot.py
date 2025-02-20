@@ -102,7 +102,7 @@ async def handle_round_selection(update: Update, context: ContextTypes.DEFAULT_T
         return
     
     context.bot_data[chat_id] = {
-        "selected_round": 3, #rounds
+        "selected_round": rounds,
         "game_active": False
     }
 
