@@ -133,6 +133,7 @@ async def run_multiple_rounds(update: Update, context: CallbackContext, chat_id:
         total_rounds = context.bot_data[chat_id]["selected_round"]
         time_limit = context.bot_data[chat_id]["selected_time"]
         global taskcancelcount
+        taskcancelcount =1
         for round_num in range(1, total_rounds + 1):
             if not context.bot_data[chat_id]["game_active"]:
                 break
