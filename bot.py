@@ -13,9 +13,10 @@ import pandas as pd
 import os
 ALLOWED_GROUP_IDS = [-1001817635995, -1002114430690]
 EXCEL_FILE = "user_scores.xlsx"
+#TOKEN = "7007935023:AAENkGaklw6LMJA_sfhVZhnoAgIjW4lDTBc"
 TOKEN = "7250203799:AAE0M77UUyArkcfaqkWJHz-URozxGmfNBVQ"
 botname = "volara"
-
+taskcancelcount = 1
 def generate_random_letters():
     try:
         vowels = "aeiou"
@@ -44,7 +45,6 @@ async def start_word_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         chat_id = str(update.message.chat_id)
         user_id = update.message.from_user.id
-        # Check if a game is already running in the group
         if context.bot_data.get(chat_id, {}).get("game_active", False):
             try:
                 await update.message.reply_text("⚠️ A game is already running in this group!")
@@ -54,10 +54,16 @@ async def start_word_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # Game round selection buttons
         keyboard = [
-            [InlineKeyboardButton("2️⃣ 5️⃣", callback_data=f"{chat_id}:rounds_25")],
-            [InlineKeyboardButton("1️⃣ 0️⃣ 0️⃣", callback_data=f"{chat_id}:rounds_100")],
-            [InlineKeyboardButton("2️⃣ 5️⃣ 0️⃣", callback_data=f"{chat_id}:rounds_250")],
-            [InlineKeyboardButton("5️⃣ 0️⃣ 0️⃣", callback_data=f"{chat_id}:rounds_500")],
+            [InlineKeyboardButton("2️⃣ 5️⃣", callback_data=f"{chat_id}:rounds_25"),
+            InlineKeyboardButton(" 5️⃣ 0️⃣", callback_data=f"{chat_id}:rounds_50")
+            ],
+            [InlineKeyboardButton("1️⃣ 0️⃣ 0️⃣", callback_data=f"{chat_id}:rounds_100"),
+            InlineKeyboardButton("1️⃣ 5️⃣ 0️⃣", callback_data=f"{chat_id}:rounds_150")
+            ],
+            [ InlineKeyboardButton("2️⃣0️⃣ 0️⃣", callback_data=f"{chat_id}:rounds_200"),
+              InlineKeyboardButton("2️⃣ 5️⃣ 0️⃣", callback_data=f"{chat_id}:rounds_250")
+            ],
+            
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         try:
@@ -126,11 +132,12 @@ async def run_multiple_rounds(update: Update, context: CallbackContext, chat_id:
     try:
         total_rounds = context.bot_data[chat_id]["selected_round"]
         time_limit = context.bot_data[chat_id]["selected_time"]
-
+        global taskcancelcount
         for round_num in range(1, total_rounds + 1):
             if not context.bot_data[chat_id]["game_active"]:
                 break
-
+            if taskcancelcount > 3:
+                break
             await start_round(update, context, chat_id, round_num, time_limit)
             await asyncio.sleep(time_limit)  # Round duration
 
@@ -238,7 +245,7 @@ async def process_word(update: Update, context: CallbackContext):
         word = update.message.text.lower()
         user_id = update.message.from_user.id
         user = update.message.from_user
-        username = f"@{user.username}" if user.username else user.first_name
+        username = f"{user.username}" if user.username else user.first_name
 
 
         current_letters = context.bot_data[chat_id]["current_letters"]
@@ -270,9 +277,39 @@ async def cancel_game(update: Update, context: CallbackContext):
                 await update.message.chat.send_message("⚠️ No active game is running in this group!")
             return
         
-        # Cancel the game
+        user_scores = context.bot_data[chat_id]["user_scores"]
+        if os.path.exists(EXCEL_FILE):
+            df = pd.read_excel(EXCEL_FILE, dtype={"chat_id": str, "user_id": str})  # Ensure consistent data types
+        else:
+            df = pd.DataFrame(columns=["sr_no", "chat_id", "user_id", "username", "score"])
+
+        new_data = []
+        for user_id, data in user_scores.items():
+            username = data["name"]
+            score = data["score"]
+
+            # Convert user_id and chat_id to string for consistency in comparison
+            user_id = str(user_id)
+            chat_id = str(chat_id)
+
+            # Check if the user already exists in the same chat_id
+            mask = (df["chat_id"] == chat_id) & (df["user_id"] == user_id)
+
+            if mask.any():
+                # Update existing row (add score & update username)
+                df.loc[mask, "score"] = df.loc[mask, "score"].astype(int) + score
+                df.loc[mask, "username"] = username  # Update username if changed
+            else:
+                # Add new row if user is in a different chat_id or doesn't exist
+                new_data.append([len(df) + len(new_data) + 1, chat_id, user_id, username, score])
+        if new_data:
+            new_df = pd.DataFrame(new_data, columns=["sr_no", "chat_id", "user_id", "username", "score"])
+            df = pd.concat([df, new_df], ignore_index=True)
+        df["sr_no"] = range(1, len(df) + 1)
+        df.to_excel(EXCEL_FILE, index=False)
         context.bot_data[chat_id]["game_active"] = False
         
+
         try:
             await update.message.reply_text("❌ The game has been canceled!")
         except:
@@ -284,13 +321,15 @@ async def cancel_game(update: Update, context: CallbackContext):
 
 async def end_round(update: Update, context: CallbackContext, chat_id: str):
     try:
+        global taskcancelcount
         user_scores = context.bot_data[chat_id]["user_scores"]
         if context.bot_data[chat_id]["game_active"] == False:
             return
         if not user_scores:
+            taskcancelcount = taskcancelcount +1
             await update.effective_chat.send_message("⏳ Time's up! No valid words submitted this round.")
             return
-
+        taskcancelcount = 1
         # Prepare score results message
         results = "\n".join([f"{data['name']}: {data['score']} points" for data in user_scores.values()])
         await update.effective_chat.send_message(f"⏳ Time's up! Round Over!\n\n🔹 Scores till This Round:\n{results}")
@@ -299,7 +338,7 @@ async def end_round(update: Update, context: CallbackContext, chat_id: str):
 
 async def my_score(update: Update, context: CallbackContext):
     try:
-        """Fetches and displays the total score of the user across all groups."""
+        """Fetches and displays the total score of the user across all groups along with their rank."""
         user_id = str(update.message.from_user.id)
 
         if not os.path.exists(EXCEL_FILE):
@@ -311,8 +350,15 @@ async def my_score(update: Update, context: CallbackContext):
 
         df = pd.read_excel(EXCEL_FILE, dtype={"chat_id": str, "user_id": str})
 
-        # Filter rows belonging to the user and sum their scores
-        user_total_score = df[df["user_id"] == user_id]["score"].sum()
+        # Calculate total scores for all users
+        user_scores = df.groupby("user_id")["score"].sum().reset_index()
+
+        # Sort by score in descending order
+        user_scores = user_scores.sort_values(by="score", ascending=False).reset_index(drop=True)
+
+        # Get the rank of the current user
+        user_scores["rank"] = user_scores["score"].rank(method="min", ascending=False)
+        user_total_score = user_scores[user_scores["user_id"] == user_id]["score"].sum()
 
         if user_total_score == 0:
             try:
@@ -320,12 +366,17 @@ async def my_score(update: Update, context: CallbackContext):
             except:
                 await update.message.chat.send_message("You haven't scored any points yet.")
         else:
+            user_rank = int(user_scores[user_scores["user_id"] == user_id]["rank"].values[0])
+            total_players = len(user_scores)
             try:
-                await update.message.reply_text(f"🏅 Your Total Score: {user_total_score} points")
+                await update.message.reply_text(f"🏅 Your Total Score: {user_total_score} points\n"
+                                                f"📊 Your Rank: {user_rank} out of {total_players} players")
             except:
-                await update.message.chat.send_message(f"🏅 Your Total Score: {user_total_score} points")
-    except:
-        print("Exception occured")
+                await update.message.chat.send_message(f"🏅 Your Total Score: {user_total_score} points\n"
+                                                       f"📊 Your Rank: {user_rank} out of {total_players} players")
+    except Exception as e:
+        print(f"Exception occurred: {e}")
+
 
 async def group_top_10_scorers(update: Update, context: CallbackContext):
     try:
@@ -355,7 +406,7 @@ async def group_top_10_scorers(update: Update, context: CallbackContext):
 
         result_text = "🏆 Top 10 Scorers in This Group 🏆\n\n"
         for index, row in top_scorers.iterrows():
-            result_text += f"🔹 {row['username']}: {row['score']} points\n"
+            result_text += f"🔹 @{row['username']}: {row['score']} points\n"
         try:
             await update.message.reply_text(result_text)
         except:
@@ -388,7 +439,7 @@ async def all_group_top_10(update: Update, context: CallbackContext):
 
         result_text = "🌍 Top 10 Players Across All Groups 🌍\n\n"
         for index, row in top_scorers.iterrows():
-            result_text += f"🏅 {row['username']}: {row['score']} points\n"
+            result_text += f"🏅 @{row['username']}: {row['score']} points\n"
 
         try:
             await update.message.reply_text(result_text)
@@ -400,26 +451,18 @@ async def all_group_top_10(update: Update, context: CallbackContext):
 async def download_scores_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         chat_id = update.message.chat.id
-        
-        # Check if the chat_id (group ID) is in the allowed list
-    
         if chat_id not in ALLOWED_GROUP_IDS:
             try:
                 await update.message.reply_text("Due to the free service, you are not allowed to start a game in this group. Play there https://t.me/+yVFKtplWZUA0Yzhl or contact @O000000000O00000000O")
             except Exception as e:
                 await update.message.chat.send_message("Due to the free service, you are not allowed to start a game in this group. Play there https://t.me/+yVFKtplWZUA0Yzhl or contact @O000000000O00000000O")
             return
-
-        # Check if the file exists
         if os.path.exists(EXCEL_FILE):
-            # Send the file to the user
             with open(EXCEL_FILE, 'rb') as file:
                 await context.bot.send_document(chat_id=update.message.chat.id, document=file)
         else:
-            # Notify the user that the file does not exist
             await update.message.reply_text("Sorry, the score file is not available.")
     except Exception as e:
-        # Handle any errors
         print("Exception occured")
 
 
