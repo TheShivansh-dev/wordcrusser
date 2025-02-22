@@ -28,7 +28,7 @@ def generate_random_letters():
         random.shuffle(all_letters)
         return "".join(all_letters)
     except Exception as e:
-        print("Exception occured")
+        print("Exception occured",e)
 
 
 def is_valid_word(word):
@@ -48,7 +48,7 @@ async def start_word_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if context.bot_data.get(chat_id, {}).get("game_active", False):
             try:
                 await update.message.reply_text("⚠️ A game is already running in this group!")
-            except:
+            except Exception as e:
                 await update.message.chat.send_message("⚠️ A game is already running in this group!")
             return
 
@@ -68,10 +68,10 @@ async def start_word_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup = InlineKeyboardMarkup(keyboard)
         try:
             await update.message.reply_text("How many rounds do you want?", reply_markup=reply_markup)
-        except:
+        except Exception as e:
             await update.message.chat.send_message("How many rounds do you want?", reply_markup=reply_markup)
-    except:
-        print("Exception occured")
+    except Exception as e:
+        print("except Exception as eion occured",e)
 
 async def handle_round_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
@@ -87,7 +87,7 @@ async def handle_round_selection(update: Update, context: ContextTypes.DEFAULT_T
             return
         
         context.bot_data[chat_id] = {
-            "selected_round": rounds,
+            "selected_round": 4, #rounds,
             "game_active": False
         }
 
@@ -102,10 +102,10 @@ async def handle_round_selection(update: Update, context: ContextTypes.DEFAULT_T
         
         try:
             await query.edit_message_text(f"✅ {rounds} Rounds Selected!\n\nNow choose the time in seconds per round:", reply_markup=reply_markup)
-        except:
+        except Exception as e:
             await update.message.chat.send_message(f"✅ {rounds} Rounds Selected!\n\nNow choose the time in seconds per round:", reply_markup=reply_markup)
-    except:
-        print("Exception occured")
+    except Exception as e:
+        print("except Exception as eion occured",e)
     
 
 async def handle_time_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -121,12 +121,12 @@ async def handle_time_selection(update: Update, context: ContextTypes.DEFAULT_TY
 
         try:
             await query.edit_message_text(f"✅ Game starting with {context.bot_data[chat_id]['selected_round']} rounds and {selected_time} seconds per round!")
-        except:
+        except Exception as e:
             await update.message.chat.send_message(f"✅ Game starting with {context.bot_data[chat_id]['selected_round']} rounds and {selected_time} seconds per round!")
 
         asyncio.create_task(run_multiple_rounds(update, context, chat_id))
-    except:
-        print("Exception occured")
+    except Exception as e:
+        print("except Exception as eion occured",e)
 
 async def run_multiple_rounds(update: Update, context: CallbackContext, chat_id: str):
     try:
@@ -181,8 +181,8 @@ async def run_multiple_rounds(update: Update, context: CallbackContext, chat_id:
         # Save back to Excel
         df.to_excel(EXCEL_FILE, index=False)
         context.bot_data[chat_id]["game_active"] = False
-    except:
-        print("Exception occured")
+    except Exception as e:
+        print("except Exception as eion occured",e)
 
 
 
@@ -211,8 +211,8 @@ def create_balanced_keyboard(letters):
             keyboard.append([InlineKeyboardButton(letters[j].upper(), callback_data=f"letter_{letters[j]}") for j in range(index, index + second_row_size)])
 
         return keyboard
-    except:
-        print("Exception occured")
+    except Exception as e:
+        print("except Exception as eion occured",e)
 
 
 async def start_round(update: Update, context: CallbackContext, chat_id: str, round_num: int, time_limit: int):
@@ -231,8 +231,8 @@ async def start_round(update: Update, context: CallbackContext, chat_id: str, ro
                     f"Form words using the letters below. You have {time_limit} seconds!",
                 reply_markup=reply_markup
             )
-    except:
-        print("Exception occured")
+    except Exception as e:
+        print("except Exception as eion occured",e)
 
 
 async def process_word(update: Update, context: CallbackContext):
@@ -245,6 +245,7 @@ async def process_word(update: Update, context: CallbackContext):
         word = update.message.text.lower()
         user_id = update.message.from_user.id
         user = update.message.from_user
+        usershowingname = user.first_name
         username = f"{user.username}" if user.username else user.first_name
 
 
@@ -258,13 +259,14 @@ async def process_word(update: Update, context: CallbackContext):
 
         if all(current_letters.count(c) >= word.count(c) for c in word) and is_valid_word(word):
             used_words.add(word)  
-            user_scores.setdefault(user_id, {"name": username, "score": 0})
+            user_scores.setdefault(user_id, {"name": username, "score": 0 ,"usershowingname":usershowingname})
             user_scores[user_id]["score"] += len(word)  
-
+            print("this is",user_scores)
+        
         else:
             print("Invalid word")
-    except:
-        print("Exception occured")
+    except Exception as e:
+        print("except Exception as eion occured",e)
         
 async def cancel_game(update: Update, context: CallbackContext):
     try:
@@ -273,7 +275,7 @@ async def cancel_game(update: Update, context: CallbackContext):
         if not context.bot_data.get(chat_id, {}).get("game_active", False):
             try:
                 await update.message.reply_text("⚠️ No active game is running in this group!")
-            except:
+            except Exception as e:
                 await update.message.chat.send_message("⚠️ No active game is running in this group!")
             return
         
@@ -309,13 +311,8 @@ async def cancel_game(update: Update, context: CallbackContext):
         df.to_excel(EXCEL_FILE, index=False)
         context.bot_data[chat_id]["game_active"] = False
         
-
-        try:
-            await update.message.reply_text("❌ The game has been canceled!")
-        except:
-            await update.message.chat.send_message("❌ The game has been canceled!")
-    except:
-        print("Exception occured")
+    except Exception as e:
+        print("except Exception as eion occured",e)
 
 
 
@@ -331,10 +328,10 @@ async def end_round(update: Update, context: CallbackContext, chat_id: str):
             return
         taskcancelcount = 1
         # Prepare score results message
-        results = "\n".join([f"{data['name']}: {data['score']} points" for data in user_scores.values()])
+        results = "\n".join([f"{data['usershowingname']}: {data['score']} points" for data in user_scores.values()])
         await update.effective_chat.send_message(f"⏳ Time's up! Round Over!\n\n🔹 Scores till This Round:\n{results}")
-    except:
-        print("Exception occured")
+    except Exception as e:
+        print("except Exception as eion occured",e)
 
 async def my_score(update: Update, context: CallbackContext):
     try:
@@ -344,7 +341,7 @@ async def my_score(update: Update, context: CallbackContext):
         if not os.path.exists(EXCEL_FILE):
             try:
                 await update.message.reply_text("No game data found yet.")
-            except:
+            except Exception as e:
                 await update.message.chat.send_message("No game data found yet.")
             return
 
@@ -363,7 +360,7 @@ async def my_score(update: Update, context: CallbackContext):
         if user_total_score == 0:
             try:
                 await update.message.reply_text("You haven't scored any points yet.")
-            except:
+            except Exception as e:
                 await update.message.chat.send_message("You haven't scored any points yet.")
         else:
             user_rank = int(user_scores[user_scores["user_id"] == user_id]["rank"].values[0])
@@ -371,7 +368,7 @@ async def my_score(update: Update, context: CallbackContext):
             try:
                 await update.message.reply_text(f"🏅 Your Total Score: {user_total_score} points\n"
                                                 f"📊 Your Rank: {user_rank} out of {total_players} players")
-            except:
+            except Exception as e:
                 await update.message.chat.send_message(f"🏅 Your Total Score: {user_total_score} points\n"
                                                        f"📊 Your Rank: {user_rank} out of {total_players} players")
     except Exception as e:
@@ -386,7 +383,7 @@ async def group_top_10_scorers(update: Update, context: CallbackContext):
         if not os.path.exists(EXCEL_FILE):
             try:
                 await update.message.reply_text("No game data found yet.")
-            except:
+            except Exception as e:
                 await update.message.chat.send_message("No game data found yet.")
             return
 
@@ -400,7 +397,7 @@ async def group_top_10_scorers(update: Update, context: CallbackContext):
         if top_scorers.empty:
             try:
                 await update.message.reply_text("No scores recorded for this group yet.")
-            except:
+            except Exception as e:
                 await update.message.chat.send_message("No scores recorded for this group yet.")
             return
 
@@ -409,10 +406,10 @@ async def group_top_10_scorers(update: Update, context: CallbackContext):
             result_text += f"🔹 @{row['username']}: {row['score']} points\n"
         try:
             await update.message.reply_text(result_text)
-        except:
+        except Exception as e:
             await update.message.chat.send_message(result_text)
-    except:
-        print("Exception occured")
+    except Exception as e:
+        print("except Exception as eion occured",e)
 
 async def all_group_top_10(update: Update, context: CallbackContext):
     try:
@@ -420,7 +417,7 @@ async def all_group_top_10(update: Update, context: CallbackContext):
         if not os.path.exists(EXCEL_FILE):
             try:
                 await update.message.reply_text("No game data found yet.")
-            except:
+            except Exception as e:
                 await update.message.chat.send_message("No game data found yet.")
             return
 
@@ -433,7 +430,7 @@ async def all_group_top_10(update: Update, context: CallbackContext):
         if top_scorers.empty:
             try:
                 await update.message.reply_text("No scores recorded yet.")
-            except:
+            except Exception as e:
                 await update.message.chat.send_message("No scores recorded yet.")
             return
 
@@ -443,10 +440,10 @@ async def all_group_top_10(update: Update, context: CallbackContext):
 
         try:
             await update.message.reply_text(result_text)
-        except:
+        except Exception as e:
             await update.message.chat.send_message(result_text)
-    except:
-        print("Exception occured")
+    except Exception as e:
+        print("except Exception as eion occured",e)
 
 async def download_scores_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
@@ -463,7 +460,7 @@ async def download_scores_command(update: Update, context: ContextTypes.DEFAULT_
         else:
             await update.message.reply_text("Sorry, the score file is not available.")
     except Exception as e:
-        print("Exception occured")
+        print("Exception occured",e)
 
 
 def main():
