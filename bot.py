@@ -246,7 +246,7 @@ async def process_word(update: Update, context: CallbackContext):
         user_id = update.message.from_user.id
         user = update.message.from_user
         usershowingname = user.first_name
-        username = f"{user.username}" if user.username else user.first_name
+        username = f"@{user.username}" if user.username else user.first_name
 
 
         current_letters = context.bot_data[chat_id]["current_letters"]
@@ -403,7 +403,7 @@ async def group_top_10_scorers(update: Update, context: CallbackContext):
 
         result_text = "🏆 Top 10 Scorers in This Group 🏆\n\n"
         for index, row in top_scorers.iterrows():
-            result_text += f"🔹 @{row['username']}: {row['score']} points\n"
+            result_text += f"🔹 {row['username']}: {row['score']} points\n"
         try:
             await update.message.reply_text(result_text)
         except Exception as e:
@@ -436,7 +436,7 @@ async def all_group_top_10(update: Update, context: CallbackContext):
 
         result_text = "🌍 Top 10 Players Across All Groups 🌍\n\n"
         for index, row in top_scorers.iterrows():
-            result_text += f"🏅 @{row['username']}: {row['score']} points\n"
+            result_text += f"🏅 {row['username']}: {row['score']} points\n"
 
         try:
             await update.message.reply_text(result_text)
