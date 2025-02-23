@@ -12,7 +12,7 @@ CHANNEL_USERNAME = "@iespchannel0404"
 import pandas as pd
 import os
 ALLOWED_GROUP_IDS = [-1001817635995, -1002114430690]
-groupsendid = -1001817635995
+groupsendid = -1002114430690
 EXCEL_FILE = "user_scores.xlsx"
 #TOKEN = "7007935023:AAENkGaklw6LMJA_sfhVZhnoAgIjW4lDTBc"
 TOKEN = "7250203799:AAE0M77UUyArkcfaqkWJHz-URozxGmfNBVQ"
