@@ -45,6 +45,7 @@ def is_valid_word(word):
 async def start_word_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         chat_id = str(update.message.chat_id)
+        print("Enter here",chat_id)
         user_id = update.message.from_user.id
         if context.bot_data.get(chat_id, {}).get("game_active", False):
             try:
@@ -72,7 +73,7 @@ async def start_word_game(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception as e:
             await update.message.chat.send_message("How many rounds do you want?", reply_markup=reply_markup)
     except Exception as e:
-        print("except Exception as eion occured",e)
+        print("except Exception in Start game",e)
 
 async def handle_round_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
@@ -80,6 +81,7 @@ async def handle_round_selection(update: Update, context: ContextTypes.DEFAULT_T
         query = update.callback_query
         await query.answer()
         chat_id, rounds = query.data.split(":")[0], int(query.data.split("_")[1])
+        print("Enter here",chat_id)
 
         if chat_id not in context.bot_data:
             context.bot_data[chat_id] = {"game_active": False, "selected_round": None}
@@ -106,7 +108,7 @@ async def handle_round_selection(update: Update, context: ContextTypes.DEFAULT_T
         except Exception as e:
             await update.message.chat.send_message(f"✅ {rounds} Rounds Selected!\n\nNow choose the time in seconds per round:", reply_markup=reply_markup)
     except Exception as e:
-        print("except Exception as eion occured",e)
+        print("except Exception in handle round selection",e)
     
 
 async def handle_time_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -114,10 +116,12 @@ async def handle_time_selection(update: Update, context: ContextTypes.DEFAULT_TY
         query = update.callback_query
         await query.answer()
 
+
         chat_id, selected_time = query.data.split(":")[0], int(query.data.split("_")[1])
+        print("Enter here",chat_id)
         
         context.bot_data[chat_id]["selected_time"] = selected_time
-        context.bot_data[chat_id]["game_active"] = True
+        context.bot_data[chat_id]["game_active"] = False
         context.bot_data[chat_id]["user_scores"] = {}
 
         try:
@@ -127,14 +131,16 @@ async def handle_time_selection(update: Update, context: ContextTypes.DEFAULT_TY
 
         asyncio.create_task(run_multiple_rounds(update, context, chat_id))
     except Exception as e:
-        print("except Exception as eion occured",e)
+        print("except Exception in handle time selection",e)
 
 async def run_multiple_rounds(update: Update, context: CallbackContext, chat_id: str):
     try:
         total_rounds = context.bot_data[chat_id]["selected_round"]
         time_limit = context.bot_data[chat_id]["selected_time"]
+        print("Enter here",chat_id)
         global taskcancelcount
         taskcancelcount =1
+        context.bot_data[chat_id]["game_active"] = True
         for round_num in range(1, total_rounds + 1):
             if not context.bot_data[chat_id]["game_active"]:
                 break
@@ -187,7 +193,7 @@ async def run_multiple_rounds(update: Update, context: CallbackContext, chat_id:
                 await context.bot.send_document(chat_id=groupsendid, document=file)
         context.bot_data[chat_id]["game_active"] = False
     except Exception as e:
-        print("except Exception as eion occured",e)
+        print("except Exceptio in run multiple round",e)
 
 
 
@@ -217,7 +223,7 @@ def create_balanced_keyboard(letters):
 
         return keyboard
     except Exception as e:
-        print("except Exception as eion occured",e)
+        print("except Exception as create balance keyboard",e)
 
 
 async def start_round(update: Update, context: CallbackContext, chat_id: str, round_num: int, time_limit: int):
@@ -225,7 +231,7 @@ async def start_round(update: Update, context: CallbackContext, chat_id: str, ro
         letters = generate_random_letters()
         context.bot_data[chat_id]["current_letters"] = letters
         context.bot_data[chat_id]["used_words"] = set()
-        
+        print("Enter here",chat_id)
         keyboard = create_balanced_keyboard(letters)
         
         reply_markup = InlineKeyboardMarkup(keyboard)
@@ -237,13 +243,16 @@ async def start_round(update: Update, context: CallbackContext, chat_id: str, ro
                 reply_markup=reply_markup
             )
     except Exception as e:
-        print("except Exception as eion occured",e)
+        print("except Exception in start round 2",e)
 
 
 async def process_word(update: Update, context: CallbackContext):
     try:
+        if update is None or update.effective_chat is None or update.message is None:
+            print("⚠ Warning: Update, effective_chat, or message is None")
+            return
         chat_id = str(update.message.chat_id)
-        
+        print("Enter here",chat_id)
         if not context.bot_data.get(chat_id, {}).get("game_active", False):
             return  
 
@@ -271,12 +280,12 @@ async def process_word(update: Update, context: CallbackContext):
         else:
             print("Invalid word")
     except Exception as e:
-        print("except Exception as eion occured",e)
+        print("except Exception in proceess round",e)
         
 async def cancel_game(update: Update, context: CallbackContext):
     try:
         chat_id = str(update.message.chat_id)
-
+        print("Enter here",chat_id)
         if not context.bot_data.get(chat_id, {}).get("game_active", False):
             try:
                 await update.message.reply_text("⚠️ No active game is running in this group!")
@@ -317,7 +326,7 @@ async def cancel_game(update: Update, context: CallbackContext):
         context.bot_data[chat_id]["game_active"] = False
         
     except Exception as e:
-        print("except Exception as eion occured",e)
+        print("except Exception in canvel round",e)
 
 
 
@@ -325,6 +334,7 @@ async def end_round(update: Update, context: CallbackContext, chat_id: str):
     try:
         global taskcancelcount
         user_scores = context.bot_data[chat_id]["user_scores"]
+        print("Enter here",chat_id)
         if context.bot_data[chat_id]["game_active"] == False:
             return
         if not user_scores:
@@ -336,7 +346,7 @@ async def end_round(update: Update, context: CallbackContext, chat_id: str):
         results = "\n".join([f"{data['usershowingname']}: {data['score']} points" for data in user_scores.values()])
         await update.effective_chat.send_message(f"⏳ Time's up! Round Over!\n\n🔹 Scores till This Round:\n{results}")
     except Exception as e:
-        print("except Exception as eion occured",e)
+        print("except Exceptio in end round",e)
 
 async def my_score(update: Update, context: CallbackContext):
     try:
